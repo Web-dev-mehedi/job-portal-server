@@ -3,13 +3,11 @@ const express = require('express');
 const cors = require('cors');
 const app = express();
 const port = process.env.PORT || 5000;
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 // middleware
 app.use(cors());
-app.use(express());
-// 
-
+app.use(express.json());
 // 
 const uri = `mongodb+srv://${process.env.USER_DB}:${process.env.USER_PASS}@cluster0.pm9ea.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
@@ -26,20 +24,92 @@ async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
-    // 
-    const jobPortalAlljob = client.db("job-portalDB").collection("allJob")
-    //   
-    app.get("/all-Job", async (req ,res )=>{
+    // database
+    const jobPortalAlljob = client.db("job-portalDB").collection("allJob");
+    const jobPortalApplication = client.db("job-portalDB").collection("application");
+    const jobPortalUsers = client.db("job-portalDB").collection("users");
+
+
+    // get all jobs data 
+    app.get("/jobs", async (req ,res )=>{
           const cursor = jobPortalAlljob.find();
           const result = await cursor.toArray();
           res.send(result)
     })
+   
+// get data by id
+app.get("/jobs/details/:id", async (req ,res )=>{
+ const id = req.params.id;
+ const query ={_id: new ObjectId(id)};
+ const result = await jobPortalAlljob.findOne(query);
+ res.send(result)
+})
+
+// for empolyer
+app.post("/add-jobs", async(req, res)=>{
+   const userData = req.body;
+   const result = await jobPortalAlljob.insertOne(userData);
+   res.send(result)
+})
+
+// for applicant
+// get appliant data  by ids
+app.get("/application/me", async (req ,res )=>{
+  // get ids by string formet from front-end
+  const idsString = req.query.ids;
+  if(!idsString){
+   return res.status(400).send("Missing 'ids' query parameter");
+  }
+  // for making string too array
+  const ids = idsString.split(',');
+  const objectIds = ids.map(id => new ObjectId(id));
+  const result = await jobPortalAlljob.find({_id: {$in: objectIds}}).toArray();
+  res.send(result)
+ })
+
+// get applicant application by mail
+app.get('/application/:mail', async (req ,res )=>{
+  const mail= req.params.mail;
+  const query ={ userEmail: mail};
+  const result = await jobPortalApplication.find(query).toArray();
+  res.send(result)
+})
+// 
+ // get all application
+ app.get('/application', async (req ,res )=>{
+  const cursor = jobPortalApplication.find();
+  const result = await cursor.toArray();
+  res.send(result)
+})
+ // post application by applicant 
+ app.post('/application', async (req ,res )=>{
+     const applicantInfo = req.body;
+     const result = await jobPortalApplication.insertOne(applicantInfo);
+     res.send(result)
+ })
+// delete application
+app.delete('/application/:id', async(req , res)=>{
+     const id = req.params.id;
+     const query = {_id: new ObjectId(id)}
+     const result = await jobPortalApplication.deleteOne(query) ;
+     res.send(result)
+})
 
 
 
-
-
-
+// users
+ // get all users
+ app.get('/users', async (req ,res )=>{
+  const cursor = jobPortalUsers.find();
+  const result = await cursor.toArray();
+  res.send(result)
+})
+// users
+app.post('/users', async(req, res) => {
+   const userInfo = req.body;
+   const result = await jobPortalUsers.insertOne(userInfo);
+   res.send(result)
+})
 
 
 
