@@ -51,6 +51,46 @@ app.post("/add-jobs", async(req, res)=>{
    const result = await jobPortalAlljob.insertOne(userData);
    res.send(result)
 })
+// 
+app.patch('/jobs/update/:id', async(req , res) =>{
+  const id = req.params.id;
+  const filter = {_id : new ObjectId(id)};
+  const formData = req.body;
+  const updatedData = {
+    $set : {
+         jobName:formData?.jobName,
+         companyName:formData?.companyName,
+         phone:formData?.phone,
+         companyImage:formData?.companyImage,
+         description:formData?.description,
+         jobCategory:formData?.jobCategory,
+         experience:formData?.experience,
+         qualification:formData?.qualification,
+         level:formData?.level,
+         applicationStartDate:formData?.applicationStartDate,
+         applicationLastDate:formData?.applicationLastDate,
+         statement:formData?.statement,
+         benefits:formData?.benefits,
+         workingTimes:formData?.workingTimes,
+         location:formData?.location,
+         jobType:formData?.jobType,
+         skills:formData?.skills,
+         salaryRange:formData?.salaryRange,
+         tags:formData?.tags,
+  }
+}
+  const result = await jobPortalAlljob.updateOne(filter , updatedData);
+  res.send(result)
+
+})
+// delete added jobs
+app.delete('/my-jobs/:id', async(req , res)=>{
+  const id = req.params.id;
+  const query = {_id: new ObjectId(id)}
+  const result = await jobPortalAlljob.deleteOne(query) ;
+  res.send(result)
+})
+
 
 // for applicant
 // get appliant data  by ids
