@@ -23,7 +23,7 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
     // database
     const jobPortalAlljob = client.db("job-portalDB").collection("allJob");
     const jobPortalApplication = client.db("job-portalDB").collection("application");
@@ -43,6 +43,25 @@ app.get("/jobs/details/:id", async (req ,res )=>{
  const query ={_id: new ObjectId(id)};
  const result = await jobPortalAlljob.findOne(query);
  res.send(result)
+})
+
+// getData by query for search
+app.get("/search", async(req, res)=>{
+   const {jobLocation,jobCategory,jobTitle} = req.query;
+  // 
+  let query = {};
+
+    if(jobTitle){
+          query.jobName = {$regex:jobTitle, $options:"i"};
+    }
+    if(jobCategory){
+      query.jobCategory = jobCategory;}
+
+  if(jobLocation){
+     query.location = jobLocation;
+  }
+   const result = await jobPortalAlljob.find(query).toArray();
+   res.send(result)
 })
 
 // for empolyer
@@ -90,11 +109,47 @@ app.delete('/my-jobs/:id', async(req , res)=>{
   const result = await jobPortalAlljob.deleteOne(query) ;
   res.send(result)
 })
+ // get APPLICANT jobs application on employes
+ app.get('/application/:id', async (req ,res )=>{
+  const id = req.params.id;
+  const query = {job_id : id}
+  const cursor = jobPortalApplication.find(query);
+  const result = await cursor.toArray();
+  res.send(result)
+})
+
+ // petch APPLICANT data by employes
+ app.patch('/approve/:id', async (req ,res )=>{
+  const id = req.params.id;
+  const filter = {_id : new ObjectId(id)}
+  const updatedata ={ $set: {
+      isPending:false,
+  }}
+ const result = await jobPortalApplication.updateOne(filter, updatedata)
+  res.send(result)
+})
+
+// 
+
+app.patch('/decline/:id', async (req ,res )=>{
+  const id = req.params.id;
+  const filter = {_id : new ObjectId(id)}
+  const updatedata ={ $set: {
+      isPending:true,
+  }}
+ const result = await jobPortalApplication.updateOne(filter, updatedata)
+  res.send(result)
+})
+
+
+
+
 
 
 // for applicant
+
 // get appliant data  by ids
-app.get("/application/me", async (req ,res )=>{
+app.get("/applications/me", async (req ,res )=>{
   // get ids by string formet from front-end
   const idsString = req.query.ids;
   if(!idsString){
@@ -106,21 +161,21 @@ app.get("/application/me", async (req ,res )=>{
   const result = await jobPortalAlljob.find({_id: {$in: objectIds}}).toArray();
   res.send(result)
  })
+// 
 
+ // get application by applicant 
+ app.get('/application', async (req ,res )=>{
+  const result = await jobPortalApplication.find().toArray();
+  res.send(result)
+})
 // get applicant application by mail
-app.get('/application/:mail', async (req ,res )=>{
+app.get('/applications/:mail', async (req ,res )=>{
   const mail= req.params.mail;
   const query ={ userEmail: mail};
   const result = await jobPortalApplication.find(query).toArray();
   res.send(result)
-})
+});
 // 
- // get all application
- app.get('/application', async (req ,res )=>{
-  const cursor = jobPortalApplication.find();
-  const result = await cursor.toArray();
-  res.send(result)
-})
  // post application by applicant 
  app.post('/application', async (req ,res )=>{
      const applicantInfo = req.body;
@@ -134,6 +189,10 @@ app.delete('/application/:id', async(req , res)=>{
      const result = await jobPortalApplication.deleteOne(query) ;
      res.send(result)
 })
+
+
+
+
 
 
 
@@ -155,8 +214,8 @@ app.post('/users', async(req, res) => {
 
 
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
-    console.log("Pinged your deployment. You successfully connected to MongoDB!");
+    // await client.db("admin").command({ ping: 1 });
+    // console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
