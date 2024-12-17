@@ -1,13 +1,44 @@
 require("dotenv").config();
 const express = require('express');
 const cors = require('cors');
+const jwt = require('jsonwebtoken');
+const cookieParser = require('cookie-parser');
 const app = express();
 const port = process.env.PORT || 5000;
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 // middleware
-app.use(cors());
+app.use(cors({
+   origin:["http://localhost:5173",
+    'https://simple-filebase-2.web.app',
+    'https://simple-filebase-2.firebaseapp.com'
+   ],
+  credentials:true
+}));
 app.use(express.json());
+app.use(cookieParser());
+
+// verify token middle ware
+const verifyToken = (req, res, next)=>{
+  const token = req.cookies?.token;
+if(!token){
+  // must return
+    return  res.status(401).send({message:"unAuthorize user"})
+}
+
+jwt.verify(token, process.env.JWT_Secret, (err, decoded)=>{
+  if(err){
+   return res.status(401).send({message:"unAuthorize user"})
+  }
+  // 
+  req.user = decoded;
+  next()
+})
+
+  
+}
+
+
 // 
 const uri = `mongodb+srv://${process.env.USER_DB}:${process.env.USER_PASS}@cluster0.pm9ea.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
@@ -63,6 +94,48 @@ app.get("/search", async(req, res)=>{
    const result = await jobPortalAlljob.find(query).toArray();
    res.send(result)
 })
+
+// post the the jwt sign in
+app.post('/jwt', async (req,res)=>{
+  const user = req.body;
+  const token = jwt.sign(user, process.env.JWT_Secret,{
+    expiresIn:"5h"
+  })
+  // set on the http cookie
+  res.cookie('token', token,{
+      httpOnly:true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
+  })
+  // show on console
+  .send({success:true})
+})
+
+// cookies logout
+app.post('/logOut', (req,res)=>{
+  res.clearCookie('token', {
+    httpOnly:true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
+
+  })
+  .send({success:true})
+})
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // for empolyer
 app.post("/add-jobs", async(req, res)=>{
@@ -152,6 +225,7 @@ app.patch('/decline/:id', async (req ,res )=>{
 app.get("/applications/me", async (req ,res )=>{
   // get ids by string formet from front-end
   const idsString = req.query.ids;
+
   if(!idsString){
    return res.status(400).send("Missing 'ids' query parameter");
   }
@@ -169,9 +243,15 @@ app.get("/applications/me", async (req ,res )=>{
   res.send(result)
 })
 // get applicant application by mail
-app.get('/applications/:mail', async (req ,res )=>{
-  const mail= req.params.mail;
+app.get('/applications/:mail', verifyToken, async (req ,res )=>{
+  const mail= req?.params?.mail;
   const query ={ userEmail: mail};
+  // verify user to get data
+if(req?.user?.email !== mail){
+      return res.status(403).send("Forvidden access")
+}
+
+
   const result = await jobPortalApplication.find(query).toArray();
   res.send(result)
 });
